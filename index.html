@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Film Journal - Your Analog Photography Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        paper: '#FFFEF0',
+                        page: '#FAFAC8',
+                        cream: '#FFFEF0',
+                        buff: '#FAFAC8',
+                        warmbeige: '#F5F4E8',
+                        darktext: '#1F1F1F',
+                        medtext: '#4A4A4A',
+                        accent: '#D97706',
+                        accentdark: '#B45309',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Lexend', sans-serif;
+            font-size: 15px;
+            line-height: 1.6;
+            letter-spacing: 0.03em;
+        }
+        
+        .font-mono {
+            font-family: 'Space Mono', monospace;
+        }
+        
+        .paper-texture {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=');
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+            
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+        }
+
+        .image-preview {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="bg-[#f5f3f0]">
+    <div class="fixed inset-0 opacity-[0.015] pointer-events-none paper-texture"></div>
+
+    <div id="app" class="flex min-h-screen relative">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar w-64 bg-[#fdfcf9] border-r border-neutral-300 fixed md:relative h-screen z-50">
+            <div class="p-6 border-b border-neutral-200">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-neutral-800 rounded flex items-center justify-center">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fdfcf9" stroke-width="2">
+                            <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+                            <line x1="7" y1="2" x2="7" y2="22"></line>
+                            <line x1="17" y1="2" x2="17" y2="22"></line>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="font-medium text-neutral-900">Film Journal</h2>
+                        <p class="text-xs text-neutral-500">Queen of the Grain</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="p-3">
+                <div class="space-y-1" id="nav-menu"></div>
+            </nav>
+
+            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-neutral-200">
+                <button onclick="exportData()" class="w-full px-3 py-2 text-xs uppercase tracking-widest text-neutral-600 hover:text-neutral-900 border border-neutral-300 rounded hover:bg-neutral-50 mb-2">
+                    Export Data
+                </button>
+                <button onclick="clearAllData()" class="w-full px-3 py-2 text-xs uppercase tracking-widest text-red-600 hover:text-red-700 border border-red-300 rounded hover:bg-red-50">
+                    Clear All Data
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto md:ml-0">
+            <header class="md:hidden bg-[#fdfcf9] border-b border-neutral-200 p-4 flex items-center justify-between">
+                <button onclick="toggleMobileNav()" class="p-2 hover:bg-neutral-100 rounded">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <h1 class="text-lg font-medium">Film Journal</h1>
+                <div class="w-10"></div>
+            </header>
+
+            <div id="page-content" class="p-4 md:p-8"></div>
+        </main>
+    </div>
+
+    <div id="modals"></div>
+
+    <script>
+        // Data Storage Manager
+        class DataStore {
+            constructor() {
+                this.initialize();
+            }
+
+            initialize() {
+                const keys = ['cameras', 'rolls', 'inventory', 'shots', 'recipes', 'projects', 'labs', 'darkroom_dev', 'prints', 'templates'];
+                keys.forEach(key => {
+                    if (!localStorage.getItem('filmjournal_' + key)) {
+                        localStorage.setItem('filmjournal_' + key, JSON.stringify([]));
+                    }
+                });
+            }
+
+            get(key) {
+                return JSON.parse(localStorage.getItem('filmjournal_' + key) || '[]');
+            }
+
+            set(key, data) {
+                localStorage.setItem('filmjournal_' + key, JSON.stringify(data));
+            }
+
+            add(key, item) {
+                const data = this.get(key);
+                item.id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+                item.created_at = new Date().toISOString();
+                data.push(item);
+                this.set(key, data);
+                return item;
+            }
+
+            update(key, id, updates) {
+                const data = this.get(key);
+                const index = data.findIndex(item => item.id === id);
+                if (index !== -1) {
+                    data[index] = { ...data[index], ...updates };
+                    this.set(key, data);
+                    return data[index];
+                }
+                return null;
+            }
+
+            delete(key, id) {
+                const data = this.get(key);
+                const filtered = data.filter(item => item.id !== id);
+                this.set(key, filtered);
+            }
+
+            clear() {
+                const keys = ['cameras', 'rolls', 'inventory', 'shots', 'recipes'];
+                keys.forEach(key => localStorage.removeItem('filmjournal_' + key));
+                this.initialize();
+            }
+        }
+
+        const db = new DataStore();
+        let currentPage = 'dashboard';
+        let currentRollId = null;
+        let editingItem = null;
+        let sortBy = { cameras: 'brand', inventory: 'brand' };
+
+        const LIGHTING_CONDITIONS = [
+            'Bright Sun', 'Overcast', 'Shade', 'Golden Hour', 'Blue Hour',
+            'Indoor Natural', 'Indoor Artificial', 'Mixed'
+        ];
+
+        const DEVELOPERS = [
+            'HC-110', 'D-76', 'Xtol', 'Rodinal', 'ID-11', 'Ilfosol 3',
+            'Microphen', 'Perceptol', 'DDX', 'TMax Developer', 'Diafine',
+            'Pyrocat-HD', 'PMK Pyro', 'Caffenol', 'Stand Development', 'Custom'
+        ];
+
+        const PRINT_DEVELOPERS = ['Dektol', 'Ilford Multigrade', 'Caffenol', 'Custom'];
+        const TONERS = ['None', 'Selenium', 'Sepia', 'Gold', 'Custom'];
+
+        const pages = [
+            { id: 'dashboard', name: 'Dashboard', icon: '📊' },
+            { id: 'cameras', name: 'Cameras', icon: '📷' },
+            { id: 'active-rolls', name: 'Active Rolls', icon: '🎞️' },
+            { id: 'inventory', name: 'Inventory', icon: '📦' },
+            { id: 'archive', name: 'Archive', icon: '🗄️' },
+            { id: 'projects', name: 'Projects', icon: '📁' },
+            { id: 'darkroom', name: 'Darkroom', icon: '🔬' },
+            { id: 'labs', name: 'Lab Tracker', icon: '🏪' },
+            { id: 'soup-recipes', name: 'Soup Recipes', icon: '🧪' },
+        ];
+
+        // Utility Functions
+        function toggleMobileNav() {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+        }
+
+        function navigateTo(pageId, params = {}) {
+            currentPage = pageId;
+            if (params.rollId) currentRollId = params.rollId;
+            renderNav();
+            renderPage();
+            document.getElementById('sidebar').classList.remove('mobile-open');
+        }
+
+        function renderNav() {
+            const navMenu = document.getElementById('nav-menu');
+            navMenu.innerHTML = pages.map(page => `
+                <button 
+                    onclick="navigateTo('${page.id}')"
+                    class="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${
+                        currentPage === page.id 
+                            ? 'bg-neutral-100 text-neutral-900 font-medium' 
+                            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                    }"
+                >
+                    <span class="text-lg">${page.icon}</span>
+                    <span class="text-sm tracking-wide">${page.name}</span>
+                </button>
+            `).join('');
+        }
+
+        function getCameraName(cameraId) {
+            const camera = db.get('cameras').find(c => c.id === cameraId);
+            return camera ? `${camera.brand} ${camera.model}` : 'Unknown Camera';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function generateRollNumber() {
+            const year = new Date().getFullYear();
+            const rolls = db.get('rolls');
+            const rollsThisYear = rolls.filter(r => r.roll_number && r.roll_number.startsWith(year.toString()));
+            const nextNum = rollsThisYear.length + 1;
+            return `${year}-${String(nextNum).padStart(3, '0')}`;
+        }
+
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function hideModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            editingItem = null;
+        }
+
+        function exportData() {
+            const data = {
+                cameras: db.get('cameras'),
+                rolls: db.get('rolls'),
+                inventory: db.get('inventory'),
+                shots: db.get('shots'),
+                recipes: db.get('recipes'),
+                projects: db.get('projects'),
+                labs: db.get('labs'),
+                darkroom_dev: db.get('darkroom_dev'),
+                prints: db.get('prints'),
+                templates: db.get('templates'),
+                exportDate: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `film-journal-backup-${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }
+
+        function clearAllData() {
+            if (confirm('Are you sure? This will delete ALL your data permanently!')) {
+                if (confirm('Really sure? This cannot be undone!')) {
+                    db.clear();
+                    alert('All data cleared!');
+                    renderPage();
+                }
+            }
+        }
+
+        function imageToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Dashboard
+        function renderPage() {
+            const content = document.getElementById('page-content');
+            
+            switch(currentPage) {
+                case 'dashboard': content.innerHTML = renderDashboard(); break;
+                case 'cameras': content.innerHTML = renderCameras(); break;
+                case 'active-rolls': content.innerHTML = renderActiveRolls(); break;
+                case 'inventory': content.innerHTML = renderInventory(); break;
+                case 'archive': content.innerHTML = renderArchive(); break;
+                case 'projects': content.innerHTML = renderProjects(); break;
+                case 'darkroom': content.innerHTML = renderDarkroom(); break;
+                case 'labs': content.innerHTML = renderLabs(); break;
+                case 'soup-recipes': content.innerHTML = renderSoupRecipes(); break;
+                case 'roll-detail': content.innerHTML = renderRollDetail(); break;
+            }
+        }
+
+        function renderDashboard() {
+            const cameras = db.get('cameras');
+            const rolls = db.get('rolls').filter(r => r.status === 'loaded');
+            const allRolls = db.get('rolls');
+            const completed = allRolls.filter(r => r.status === 'completed' || r.status === 'developed');
+            
+            return `
+                <div class="max-w-6xl mx-auto relative">
+                    <div class="mb-8">
+                        <div class="relative">
+                            <div class="absolute -left-4 top-0 bottom-0 w-2 bg-neutral-800 rounded-sm opacity-20"></div>
+                            <h1 class="text-3xl md:text-4xl font-medium text-neutral-900 tracking-tight">Dashboard</h1>
+                            <p class="text-neutral-600 mt-1.5 tracking-wide font-light">Your analogue photography journal</p>
+                            <div class="mt-2 w-24 h-0.5 bg-fuchsia-500 rounded-full opacity-40"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                        ${renderStatCard('📷', cameras.length, 'Cameras', 'in collection', 'fuchsia')}
+                        ${renderStatCard('🎞️', rolls.length, 'Active Rolls', 'currently loaded', 'neutral')}
+                        ${renderStatCard('🗄️', completed.length, 'Completed', 'archived', 'neutral')}
+                    </div>
+
+                    ${rolls.length === 0 && cameras.length === 0 ? `
+                        <div class="border border-neutral-300 bg-gradient-to-br from-[#fdfcf9] to-fuchsia-50/20 rounded-lg p-8 relative">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-fuchsia-100 rounded-full blur-3xl opacity-20"></div>
+                            <div class="relative flex items-start gap-4">
+                                <div class="w-12 h-12 bg-fuchsia-500 rounded-full flex items-center justify-center text-2xl flex-shrink-0">
+                                    📷
+                                </div>
+                                <div>
+                                    <h3 class="text-xl font-medium text-neutral-900 mb-2">Welcome to Film Journal!</h3>
+                                    <p class="text-neutral-600 mb-4">Start by adding your first camera to begin tracking your analog photography journey.</p>
+                                    <button onclick="showCameraModal()" class="px-4 py-2 bg-neutral-900 text-white rounded-md text-xs uppercase tracking-widest font-medium hover:bg-neutral-800">
+                                        Add Your First Camera
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="mt-10">
+                            <div class="flex items-center gap-3 mb-6">
+                                <div class="w-1 h-8 bg-neutral-800 rounded-full"></div>
+                                <div>
+                                    <h2 class="text-xl font-medium text-neutral-900">Active Film Rolls</h2>
+                                    <p class="text-xs text-neutral-500 mt-0.5">Currently loaded and shooting</p>
+                                </div>
+                            </div>
+                            
+                            ${rolls.length === 0 ? `
+                                <div class="border-2 border-dashed border-neutral-300 bg-[#fdfcf9] rounded-lg p-12 text-center">
+                                    <div class="text-6xl mb-4">🎞️</div>
+                                    <p class="text-neutral-500 mb-4">No active film rolls</p>
+                                    <button onclick="navigateTo('active-rolls')" class="px-4 py-2 border border-neutral-900 rounded-md hover:bg-neutral-900 hover:text-white transition-all text-xs uppercase tracking-widest font-medium">
+                                        Load Your First Roll
+                                    </button>
+                                </div>
+                            ` : `
+                                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    ${rolls.map(roll => renderActiveRollCard(roll)).join('')}
+                                </div>
+                            `}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderStatCard(icon, count, label, sublabel, color) {
+            const colors = color === 'fuchsia' 
+                ? 'bg-fuchsia-50 text-fuchsia-600 ring-fuchsia-500 border-fuchsia-500'
+                : 'bg-neutral-100 text-neutral-700 ring-neutral-700 border-neutral-700';
+                
+            return `
+                <div class="border border-neutral-300 bg-[#fdfcf9] rounded-lg p-6 relative hover:shadow-md transition-shadow">
+                    <div class="absolute inset-0 opacity-[0.02] pointer-events-none paper-texture"></div>
+                    <div class="relative">
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="w-14 h-14 ${colors.split(' ')[0]} rounded-full flex items-center justify-center ring-2 ring-offset-2 ring-offset-[#fdfcf9] ${colors.split(' ')[2]} ring-opacity-20 text-2xl">
+                                ${icon}
+                            </div>
+                        </div>
+                        <div class="text-4xl font-bold text-neutral-900 font-mono mb-1">${count}</div>
+                        <p class="text-sm font-medium text-neutral-700 uppercase tracking-widest mb-0.5">${label}</p>
+                        <p class="text-xs text-neutral-500 font-light tracking-wide">${sublabel}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderActiveRollCard(roll) {
+            const progress = (roll.frames_shot / roll.total_frames) * 100;
+            const remaining = roll.total_frames - roll.frames_shot;
+            
+            return `
+                <button onclick="navigateTo('roll-detail', {rollId: '${roll.id}'})" class="group border border-neutral-300 bg-[#fdfcf9] rounded-lg overflow-hidden relative hover:shadow-lg transition-all text-left w-full">
+                    <div class="absolute left-0 top-0 bottom-0 w-3 bg-neutral-800 flex flex-col justify-around py-3 z-10">
+                        ${Array(8).fill(0).map(() => '<div class="w-2 h-2 bg-[#fdfcf9] rounded-full mx-auto"></div>').join('')}
+                    </div>
+                    
+                    <div class="paper-texture absolute inset-0 opacity-[0.02] pointer-events-none"></div>
+                    
+                    <div class="pl-6 pr-4 pt-4 pb-5 relative">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1">
+                                ${roll.roll_number ? `
+                                    <div class="mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 bg-neutral-800 text-[#fdfcf9] font-mono text-[10px] tracking-wider">
+                                        <span class="text-fuchsia-400">→</span>
+                                        ${roll.roll_number}
+                                    </div>
+                                ` : ''}
+                                <h3 class="text-lg font-medium text-neutral-900 mb-1">${roll.brand || ''} ${roll.film_stock}</h3>
+                                <p class="text-sm text-neutral-500 font-light">${getCameraName(roll.camera_id)}</p>
+                            </div>
+                            <div class="px-2.5 py-1 border-2 border-fuchsia-500 rounded-full text-fuchsia-600 font-mono text-xs font-bold tracking-wide rotate-2">
+                                ISO ${roll.iso}
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-2 mb-4">
+                            <div class="flex justify-between items-baseline">
+                                <span class="text-xs uppercase tracking-widest text-neutral-400 font-medium">Frames</span>
+                                <div class="flex items-baseline gap-1">
+                                    <span class="font-mono text-xl font-bold text-neutral-900">${roll.frames_shot || 0}</span>
+                                    <span class="text-neutral-400 font-mono text-sm">/ ${roll.total_frames}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="relative h-8 bg-neutral-200 rounded overflow-hidden border border-neutral-300">
+                                <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-neutral-700 to-neutral-800" style="width: ${progress}%"></div>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-[10px] font-mono text-neutral-400 font-medium tracking-wider">${remaining} REMAINING</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </button>
+            `;
+        }
+
+        // CAMERAS PAGE
+        function renderCameras() {
+            let cameras = db.get('cameras');
+            
+            // Sort cameras
+            if (sortBy.cameras === 'brand') {
+                cameras.sort((a, b) => (a.brand || '').localeCompare(b.brand || ''));
+            } else if (sortBy.cameras === 'format') {
+                cameras.sort((a, b) => (a.format || '').localeCompare(b.format || ''));
+            } else if (sortBy.cameras === 'model') {
+                cameras.sort((a, b) => (a.model || '').localeCompare(b.model || ''));
+            }
+            
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                        <div class="relative">
+                            <div class="absolute -left-4 top-0 bottom-0 w-2 bg-neutral-800 rounded-sm opacity-20"></div>
+                            <h1 class="text-3xl md:text-4xl font-medium text-neutral-900 tracking-tight">Camera Library</h1>
+                            <p class="text-neutral-600 mt-1.5 tracking-wide font-light">Manage your camera collection</p>
+                            <div class="mt-2 w-24 h-0.5 bg-fuchsia-500 rounded-full opacity-40"></div>
+                        </div>
+                        <div class="flex gap-3 items-center">
+                            <select onchange="sortBy.cameras = this.value; renderPage()" class="px-3 py-2 border border-neutral-300 rounded text-xs uppercase tracking-widest">
+                                <option value="brand" ${sortBy.cameras === 'brand' ? 'selected' : ''}>Sort by Brand</option>
+                                <option value="model" ${sortBy.cameras === 'model' ? 'selected' : ''}>Sort by Model</option>
+                                <option value="format" ${sortBy.cameras === 'format' ? 'selected' : ''}>Sort by Format</option>
+                            </select>
+                            <button onclick="showCameraModal()" class="px-4 py-2 bg-neutral-900 text-white rounded-md hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium flex items-center gap-2">
+                                <span>+</span>
+                                Add Camera
+                            </button>
+                        </div>
+                    </div>
+                    
+                    ${cameras.length === 0 ? `
+                        <div class="border-2 border-dashed border-neutral-300 bg-[#fdfcf9] rounded-lg p-16 text-center">
+                            <div class="text-6xl mb-4">📷</div>
+                            <h3 class="text-lg font-medium text-neutral-900 mb-2">No cameras yet</h3>
+                            <p class="text-neutral-500 mb-6">Add your first camera to start tracking film rolls</p>
+                            <button onclick="showCameraModal()" class="px-4 py-2 border border-neutral-900 rounded-md hover:bg-neutral-900 hover:text-white transition-all text-xs uppercase tracking-widest font-medium">
+                                Add Your First Camera
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${cameras.map(camera => renderCameraCard(camera)).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderCameraCard(camera) {
+            return `
+                <div class="border border-neutral-300 bg-[#fdfcf9] rounded-lg p-6 relative hover:shadow-md transition-all">
+                    <div class="paper-texture absolute inset-0 opacity-[0.02] pointer-events-none"></div>
+                    <div class="absolute top-0 left-0 right-0 h-1 bg-neutral-800"></div>
+                    
+                    <div class="relative">
+                        ${camera.image ? `
+                            <img src="${camera.image}" alt="${camera.brand} ${camera.model}" class="w-full h-48 object-cover rounded mb-4">
+                        ` : ''}
+                        
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex-1">
+                                <h3 class="text-xl font-medium text-neutral-900 mb-1">${camera.brand} ${camera.model}</h3>
+                                <div class="inline-flex items-center px-2 py-0.5 bg-neutral-800 text-[#fdfcf9] font-mono text-[10px] tracking-wider">
+                                    ${camera.format}
+                                </div>
+                            </div>
+                            <div class="w-12 h-12 bg-neutral-100 rounded-full flex items-center justify-center text-2xl">
+                                📷
+                            </div>
+                        </div>
+                        
+                        ${camera.notes ? `
+                            <div class="mb-4 pb-4 border-b border-neutral-200">
+                                <p class="text-sm text-neutral-600 italic">"${camera.notes}"</p>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="flex gap-2">
+                            <button onclick="editCamera('${camera.id}')" class="flex-1 px-3 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                Edit
+                            </button>
+                            <button onclick="deleteCamera('${camera.id}')" class="px-3 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50 text-xs uppercase tracking-widest font-medium">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showCameraModal(cameraId = null) {
+            if (cameraId) {
+                editingItem = db.get('cameras').find(c => c.id === cameraId);
+            } else {
+                editingItem = null;
+            }
+            
+            const camera = editingItem || {};
+            
+            document.getElementById('modals').innerHTML = `
+                <div id="cameraModal" class="modal active">
+                    <div class="modal-content bg-[#fdfcf9] rounded-lg p-6 max-w-lg w-full mx-4">
+                        <h2 class="text-2xl font-medium mb-6">${cameraId ? 'Edit' : 'Add'} Camera</h2>
+                        <form onsubmit="saveCamera(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Brand</label>
+                                <input type="text" id="camera-brand" required value="${camera.brand || ''}" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500" placeholder="e.g., Canon, Nikon">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Model</label>
+                                <input type="text" id="camera-model" required value="${camera.model || ''}" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500" placeholder="e.g., AE-1, F3">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Format</label>
+                                <select id="camera-format" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                    <option ${camera.format === '35mm' ? 'selected' : ''}>35mm</option>
+                                    <option ${camera.format === '110' ? 'selected' : ''}>110</option>
+                                    <option ${camera.format === 'APS' ? 'selected' : ''}>APS</option>
+                                    <option ${camera.format === 'Medium Format 120' ? 'selected' : ''}>Medium Format 120</option>
+                                    <option ${camera.format === 'Medium Format 220' ? 'selected' : ''}>Medium Format 220</option>
+                                    <option ${camera.format === 'Large Format 4x5' ? 'selected' : ''}>Large Format 4x5</option>
+                                    <option ${camera.format === 'Large Format 8x10' ? 'selected' : ''}>Large Format 8x10</option>
+                                    <option ${camera.format === 'Half Frame' ? 'selected' : ''}>Half Frame</option>
+                                    <option ${camera.format === 'Other' ? 'selected' : ''}>Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Image (Optional)</label>
+                                <input type="file" id="camera-image" accept="image/*" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                ${camera.image ? `<img src="${camera.image}" class="mt-2 image-preview">` : ''}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Notes (Optional)</label>
+                                <textarea id="camera-notes" rows="3" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500" placeholder="Any special notes about this camera...">${camera.notes || ''}</textarea>
+                            </div>
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button type="button" onclick="hideModal('cameraModal')" class="px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                    ${cameraId ? 'Update' : 'Add'} Camera
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function saveCamera(event) {
+            event.preventDefault();
+            
+            const camera = {
+                brand: document.getElementById('camera-brand').value,
+                model: document.getElementById('camera-model').value,
+                format: document.getElementById('camera-format').value,
+                notes: document.getElementById('camera-notes').value
+            };
+            
+            const imageFile = document.getElementById('camera-image').files[0];
+            if (imageFile) {
+                camera.image = await imageToBase64(imageFile);
+            } else if (editingItem && editingItem.image) {
+                camera.image = editingItem.image;
+            }
+            
+            if (editingItem) {
+                db.update('cameras', editingItem.id, camera);
+            } else {
+                db.add('cameras', camera);
+            }
+            
+            hideModal('cameraModal');
+            renderPage();
+        }
+
+        function editCamera(id) {
+            showCameraModal(id);
+        }
+
+        function deleteCamera(id) {
+            if (confirm('Delete this camera? This will not delete associated film rolls.')) {
+                db.delete('cameras', id);
+                renderPage();
+            }
+        }
+
+        // INVENTORY PAGE
+        function renderInventory() {
+            let inventory = db.get('inventory');
+            const total = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
+            
+            // Sort inventory
+            if (sortBy.inventory === 'brand') {
+                inventory.sort((a, b) => (a.brand || '').localeCompare(b.brand || ''));
+            } else if (sortBy.inventory === 'format') {
+                inventory.sort((a, b) => (a.format || '').localeCompare(b.format || ''));
+            } else if (sortBy.inventory === 'iso') {
+                inventory.sort((a, b) => (a.iso || 0) - (b.iso || 0));
+            } else if (sortBy.inventory === 'type') {
+                inventory.sort((a, b) => (a.film_type || '').localeCompare(b.film_type || ''));
+            } else if (sortBy.inventory === 'expiry') {
+                inventory.sort((a, b) => (a.expiry_date || '').localeCompare(b.expiry_date || ''));
+            }
+            
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                        <div class="relative">
+                            <div class="absolute -left-4 top-0 bottom-0 w-2 bg-neutral-800 rounded-sm opacity-20"></div>
+                            <h1 class="text-3xl md:text-4xl font-medium text-neutral-900 tracking-tight">Film Inventory</h1>
+                            <p class="text-neutral-600 mt-1.5 tracking-wide font-light">${total} rolls in stock</p>
+                            <div class="mt-2 w-24 h-0.5 bg-fuchsia-500 rounded-full opacity-40"></div>
+                        </div>
+                        <div class="flex gap-3 items-center flex-wrap">
+                            <select onchange="sortBy.inventory = this.value; renderPage()" class="px-3 py-2 border border-neutral-300 rounded text-xs uppercase tracking-widest">
+                                <option value="brand" ${sortBy.inventory === 'brand' ? 'selected' : ''}>Sort by Brand</option>
+                                <option value="format" ${sortBy.inventory === 'format' ? 'selected' : ''}>Sort by Format</option>
+                                <option value="iso" ${sortBy.inventory === 'iso' ? 'selected' : ''}>Sort by ISO</option>
+                                <option value="type" ${sortBy.inventory === 'type' ? 'selected' : ''}>Sort by Type</option>
+                                <option value="expiry" ${sortBy.inventory === 'expiry' ? 'selected' : ''}>Sort by Expiry</option>
+                            </select>
+                            <button onclick="showInventoryModal()" class="px-4 py-2 bg-neutral-900 text-white rounded-md hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium flex items-center gap-2">
+                                <span>+</span>
+                                Add Film
+                            </button>
+                        </div>
+                    </div>
+                    
+                    ${inventory.length === 0 ? `
+                        <div class="border-2 border-dashed border-neutral-300 bg-[#fdfcf9] rounded-lg p-16 text-center">
+                            <div class="text-6xl mb-4">📦</div>
+                            <h3 class="text-lg font-medium text-neutral-900 mb-2">No film in inventory</h3>
+                            <p class="text-neutral-500 mb-6">Add film stock to track what you have available</p>
+                            <button onclick="showInventoryModal()" class="px-4 py-2 border border-neutral-900 rounded-md hover:bg-neutral-900 hover:text-white transition-all text-xs uppercase tracking-widest font-medium">
+                                Add Your First Roll
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${inventory.map(item => renderInventoryCard(item)).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderInventoryCard(item) {
+            const isExpired = item.expiry_date && new Date(item.expiry_date) < new Date();
+            
+            return `
+                <div class="border border-neutral-300 bg-[#fdfcf9] rounded-lg p-5 relative hover:shadow-md transition-all">
+                    <div class="paper-texture absolute inset-0 opacity-[0.02] pointer-events-none"></div>
+                    
+                    <div class="relative">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-medium text-neutral-900 mb-1">${item.brand || ''} ${item.film_stock}</h3>
+                                <div class="flex gap-2 flex-wrap">
+                                    <span class="inline-flex px-2 py-0.5 bg-neutral-800 text-[#fdfcf9] font-mono text-[10px] tracking-wider">
+                                        ${item.format}
+                                    </span>
+                                    <span class="inline-flex px-2 py-0.5 border-2 border-fuchsia-500 text-fuchsia-600 font-mono text-[10px] tracking-wider font-bold rounded-full">
+                                        ISO ${item.iso}
+                                    </span>
+                                    ${item.film_type ? `
+                                        <span class="inline-flex px-2 py-0.5 border border-neutral-300 rounded text-[10px]">
+                                            ${item.film_type}
+                                        </span>
+                                    ` : ''}
+                                    ${item.is_souped ? `
+                                        <span class="inline-flex px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">
+                                            SOUPED
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end">
+                                <div class="text-3xl font-bold font-mono text-neutral-900">${item.quantity}</div>
+                                <div class="text-xs text-neutral-500 uppercase tracking-widest">in stock</div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-sm text-neutral-600 space-y-1 mb-3">
+                            ${item.frames_per_roll ? `<div><span class="text-neutral-500">Frames:</span> <span class="font-medium font-mono">${item.frames_per_roll}</span></div>` : ''}
+                            ${item.storage_location ? `<div><span class="text-neutral-500">Storage:</span> ${item.storage_location}${item.temp_controlled ? ' (temp controlled)' : ''}</div>` : ''}
+                            ${item.expiry_date ? `
+                                <div class="${isExpired ? 'text-red-600' : ''}">
+                                    <span class="text-neutral-500">Expires:</span> ${formatDate(item.expiry_date)}
+                                    ${isExpired ? ' ⚠️' : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="flex gap-2">
+                            <button onclick="loadFromInventory('${item.id}')" class="flex-1 px-3 py-2 bg-fuchsia-600 text-white rounded hover:bg-fuchsia-700 text-xs uppercase tracking-widest font-medium">
+                                Load into Camera
+                            </button>
+                            <button onclick="editInventory('${item.id}')" class="px-3 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                Edit
+                            </button>
+                            <button onclick="deleteInventory('${item.id}')" class="px-3 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50 text-xs uppercase tracking-widest font-medium">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showInventoryModal(itemId = null) {
+            if (itemId) {
+                editingItem = db.get('inventory').find(i => i.id === itemId);
+            } else {
+                editingItem = null;
+            }
+            
+            const item = editingItem || {};
+            
+            document.getElementById('modals').innerHTML = `
+                <div id="inventoryModal" class="modal active">
+                    <div class="modal-content bg-[#fdfcf9] rounded-lg p-6 max-w-lg w-full mx-4">
+                        <h2 class="text-2xl font-medium mb-6">${itemId ? 'Edit' : 'Add'} Film to Inventory</h2>
+                        <form onsubmit="saveInventory(event)" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Brand</label>
+                                    <input type="text" id="inv-brand" required value="${item.brand || ''}" placeholder="e.g., Kodak, Ilford" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Film Stock</label>
+                                    <input type="text" id="inv-stock" required value="${item.film_stock || ''}" placeholder="e.g., Portra 400" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">ISO</label>
+                                    <input type="number" id="inv-iso" required value="${item.iso || ''}" placeholder="400" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Format</label>
+                                    <select id="inv-format" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                        <option ${item.format === '35mm' ? 'selected' : ''}>35mm</option>
+                                        <option ${item.format === '110' ? 'selected' : ''}>110</option>
+                                        <option ${item.format === 'APS' ? 'selected' : ''}>APS</option>
+                                        <option ${item.format === '120' ? 'selected' : ''}>120</option>
+                                        <option ${item.format === '220' ? 'selected' : ''}>220</option>
+                                        <option ${item.format === '4x5' ? 'selected' : ''}>4x5</option>
+                                        <option ${item.format === '8x10' ? 'selected' : ''}>8x10</option>
+                                        <option ${item.format === 'Other' ? 'selected' : ''}>Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Quantity</label>
+                                    <input type="number" id="inv-qty" required value="${item.quantity || 1}" min="1" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Film Type</label>
+                                    <select id="inv-type" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                        <option value="Color" ${item.film_type === 'Color' ? 'selected' : ''}>Color</option>
+                                        <option value="B&W" ${item.film_type === 'B&W' ? 'selected' : ''}>B&W</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Frames/Roll</label>
+                                    <input type="number" id="inv-frames" value="${item.frames_per_roll || 36}" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Storage Location</label>
+                                    <input type="text" id="inv-storage" value="${item.storage_location || ''}" placeholder="e.g., Fridge, Freezer" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Expiry Date</label>
+                                    <input type="date" id="inv-expiry" value="${item.expiry_date || ''}" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" id="inv-temp" ${item.temp_controlled ? 'checked' : ''} class="rounded border-neutral-300">
+                                    <span class="text-sm">Temperature Controlled</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" id="inv-souped" ${item.is_souped ? 'checked' : ''} class="rounded border-neutral-300">
+                                    <span class="text-sm">Film is Souped</span>
+                                </label>
+                            </div>
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button type="button" onclick="hideModal('inventoryModal')" class="px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                    ${itemId ? 'Update' : 'Add'} to Inventory
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveInventory(event) {
+            event.preventDefault();
+            
+            const item = {
+                brand: document.getElementById('inv-brand').value,
+                film_stock: document.getElementById('inv-stock').value,
+                iso: parseInt(document.getElementById('inv-iso').value),
+                format: document.getElementById('inv-format').value,
+                quantity: parseInt(document.getElementById('inv-qty').value),
+                film_type: document.getElementById('inv-type').value,
+                frames_per_roll: parseInt(document.getElementById('inv-frames').value),
+                storage_location: document.getElementById('inv-storage').value,
+                expiry_date: document.getElementById('inv-expiry').value,
+                temp_controlled: document.getElementById('inv-temp').checked,
+                is_souped: document.getElementById('inv-souped').checked
+            };
+            
+            if (editingItem) {
+                db.update('inventory', editingItem.id, item);
+            } else {
+                db.add('inventory', item);
+            }
+            
+            hideModal('inventoryModal');
+            renderPage();
+        }
+
+        function editInventory(id) {
+            showInventoryModal(id);
+        }
+
+        function deleteInventory(id) {
+            if (confirm('Delete this film stock?')) {
+                db.delete('inventory', id);
+                renderPage();
+            }
+        }
+
+        function loadFromInventory(inventoryId) {
+            const item = db.get('inventory').find(i => i.id === inventoryId);
+            if (!item) return;
+            
+            const cameras = db.get('cameras');
+            if (cameras.length === 0) {
+                alert('Please add a camera first!');
+                return;
+            }
+            
+            document.getElementById('modals').innerHTML = `
+                <div id="loadFromInventoryModal" class="modal active">
+                    <div class="modal-content bg-[#fdfcf9] rounded-lg p-6 max-w-lg w-full mx-4">
+                        <h2 class="text-2xl font-medium mb-6">Load ${item.brand} ${item.film_stock}</h2>
+                        <form onsubmit="confirmLoadFromInventory(event, '${inventoryId}')" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Select Camera</label>
+                                <select id="load-camera" required class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                                    <option value="">Choose camera...</option>
+                                    ${cameras.map(c => `<option value="${c.id}">${c.brand} ${c.model}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Roll Number</label>
+                                <input type="text" id="load-rollnum" value="${generateRollNumber()}" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Date Loaded</label>
+                                <input type="date" id="load-date" value="${new Date().toISOString().split('T')[0]}" class="w-full px-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-fuchsia-500">
+                            </div>
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button type="button" onclick="hideModal('loadFromInventoryModal')" class="px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                    Load Film
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function confirmLoadFromInventory(event, inventoryId) {
+            event.preventDefault();
+            
+            const item = db.get('inventory').find(i => i.id === inventoryId);
+            
+            const roll = {
+                roll_number: document.getElementById('load-rollnum').value,
+                camera_id: document.getElementById('load-camera').value,
+                brand: item.brand,
+                film_stock: item.film_stock,
+                iso: item.iso,
+                total_frames: item.frames_per_roll,
+                frames_shot: 0,
+                loaded_date: document.getElementById('load-date').value,
+                status: 'loaded',
+                film_type: item.film_type,
+                is_souped: item.is_souped
+            };
+            
+            db.add('rolls', roll);
+            
+            // Decrease inventory quantity
+            if (item.quantity > 1) {
+                db.update('inventory', inventoryId, { quantity: item.quantity - 1 });
+            } else {
+                db.delete('inventory', inventoryId);
+            }
+            
+            hideModal('loadFromInventoryModal');
+            alert('Film loaded successfully!');
+            renderPage();
+        }
+
+        // Continue in next part - ACTIVE ROLLS, ARCHIVE, SOUP RECIPES, ROLL DETAIL...
+        // (Character limit reached, continuing with simplified versions)
+
+        function renderActiveRolls() {
+            const rolls = db.get('rolls').filter(r => r.status === 'loaded');
+            const cameras = db.get('cameras');
+            
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <div class="relative">
+                            <h1 class="text-3xl md:text-4xl font-medium text-neutral-900 tracking-tight">Active Film Rolls</h1>
+                            <p class="text-neutral-600 mt-1.5 tracking-wide font-light">Currently loaded film</p>
+                        </div>
+                        ${cameras.length > 0 ? `
+                            <button onclick="showLoadFilmModal()" class="px-4 py-2 bg-neutral-900 text-white rounded-md hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                + Load Film
+                            </button>
+                        ` : ''}
+                    </div>
+                    
+                    ${rolls.length === 0 && cameras.length > 0 ? `
+                        <div class="border-2 border-dashed border-neutral-300 bg-[#fdfcf9] rounded-lg p-16 text-center">
+                            <div class="text-6xl mb-4">🎞️</div>
+                            <p class="text-neutral-500 mb-4">No active film rolls</p>
+                            <button onclick="showLoadFilmModal()" class="px-4 py-2 border border-neutral-900 rounded-md hover:bg-neutral-900 hover:text-white transition-all text-xs uppercase tracking-widest font-medium">
+                                Load Your First Roll
+                            </button>
+                        </div>
+                    ` : rolls.length > 0 ? `
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${rolls.map(roll => renderActiveRollCard(roll)).join('')}
+                        </div>
+                    ` : `
+                        <div class="border-2 border-dashed border-neutral-300 bg-[#fdfcf9] rounded-lg p-16 text-center">
+                            <div class="text-6xl mb-4">📷</div>
+                            <p class="text-neutral-500 mb-4">Add a camera first</p>
+                            <button onclick="navigateTo('cameras')" class="px-4 py-2 border border-neutral-900 rounded-md hover:bg-neutral-900 hover:text-white transition-all text-xs uppercase tracking-widest font-medium">
+                                Go to Cameras
+                            </button>
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function showLoadFilmModal() {
+            const cameras = db.get('cameras');
+            const inventory = db.get('inventory');
+            
+            document.getElementById('modals').innerHTML = `
+                <div id="loadFilmModal" class="modal active">
+                    <div class="modal-content bg-[#fdfcf9] rounded-lg p-6 max-w-lg w-full mx-4">
+                        <h2 class="text-2xl font-medium mb-6">Load New Film Roll</h2>
+                        
+                        ${inventory.length > 0 ? `
+                            <div class="mb-6">
+                                <p class="text-sm text-neutral-600 mb-3">Select from inventory:</p>
+                                <div class="max-h-40 overflow-y-auto space-y-2 mb-4 border border-neutral-300 rounded p-3">
+                                    ${inventory.map(item => `
+                                        <button type="button" onclick="selectInventoryForLoad('${item.id}')" class="w-full text-left px-3 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-sm">
+                                            <strong>${item.brand} ${item.film_stock}</strong> - ISO ${item.iso} - ${item.format} (${item.quantity} available)
+                                        </button>
+                                    `).join('')}
+                                </div>
+                                <p class="text-sm text-neutral-500 text-center mb-3">— OR —</p>
+                            </div>
+                        ` : ''}
+                        
+                        <form onsubmit="loadFilmManual(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Roll Number</label>
+                                <input type="text" id="roll-number" value="${generateRollNumber()}" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Camera</label>
+                                <select id="roll-camera" required class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                    <option value="">Select camera...</option>
+                                    ${cameras.map(c => `<option value="${c.id}">${c.brand} ${c.model}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Brand</label>
+                                    <input type="text" id="roll-brand" required placeholder="Kodak" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Film Stock</label>
+                                    <input type="text" id="roll-stock" required placeholder="Portra 400" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">ISO</label>
+                                    <input type="number" id="roll-iso" required value="400" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Total Frames</label>
+                                    <input type="number" id="roll-frames" required value="36" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                            </div>
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button type="button" onclick="hideModal('loadFilmModal')" class="px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                    Load Film
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function selectInventoryForLoad(itemId) {
+            hideModal('loadFilmModal');
+            loadFromInventory(itemId);
+        }
+
+        function loadFilmManual(event) {
+            event.preventDefault();
+            
+            const roll = {
+                roll_number: document.getElementById('roll-number').value,
+                camera_id: document.getElementById('roll-camera').value,
+                brand: document.getElementById('roll-brand').value,
+                film_stock: document.getElementById('roll-stock').value,
+                iso: parseInt(document.getElementById('roll-iso').value),
+                total_frames: parseInt(document.getElementById('roll-frames').value),
+                frames_shot: 0,
+                loaded_date: new Date().toISOString().split('T')[0],
+                status: 'loaded'
+            };
+            
+            db.add('rolls', roll);
+            hideModal('loadFilmModal');
+            renderPage();
+        }
+
+        function renderArchive() {
+            const archive = db.get('rolls').filter(r => r.status !== 'loaded');
+            
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <div class="mb-8">
+                        <h1 class="text-3xl md:text-4xl font-medium text-neutral-900 tracking-tight">Archive</h1>
+                        <p class="text-neutral-600 mt-1.5 tracking-wide font-light">Past film rolls</p>
+                    </div>
+                    
+                    ${archive.length === 0 ? `
+                        <div class="text-center py-16 text-neutral-500">No archived rolls yet</div>
+                    ` : `
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${archive.map(roll => renderActiveRollCard(roll)).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderSoupRecipes() {
+            const recipes = db.get('recipes');
+            
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h1 class="text-3xl md:text-4xl font-medium text-neutral-900 tracking-tight">Soup Recipes</h1>
+                            <p class="text-neutral-600 mt-1.5 tracking-wide font-light">Experimental film processing</p>
+                        </div>
+                        <button onclick="showRecipeModal()" class="px-4 py-2 bg-neutral-900 text-white rounded-md hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                            + Add Recipe
+                        </button>
+                    </div>
+                    
+                    ${recipes.length === 0 ? `
+                        <div class="text-center py-16">
+                            <div class="text-6xl mb-4">🧪</div>
+                            <p class="text-neutral-500 mb-4">No soup recipes yet</p>
+                            <button onclick="showRecipeModal()" class="px-4 py-2 border border-neutral-900 rounded-md hover:bg-neutral-900 hover:text-white transition-all text-xs uppercase tracking-widest font-medium">
+                                Create Recipe
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${recipes.map(recipe => renderRecipeCard(recipe)).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function renderRecipeCard(recipe) {
+            return `
+                <div class="border border-neutral-300 bg-[#fdfcf9] rounded-lg p-5 relative hover:shadow-md transition-all">
+                    <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-fuchsia-500 to-fuchsia-300"></div>
+                    ${recipe.image ? `
+                        <img src="${recipe.image}" alt="${recipe.name}" class="w-full h-48 object-cover rounded mb-4">
+                    ` : ''}
+                    <h3 class="text-lg font-medium text-neutral-900 mb-2">${recipe.name}</h3>
+                    ${recipe.effect ? `<p class="text-sm text-neutral-600 mb-2">Effect: ${recipe.effect}</p>` : ''}
+                    ${recipe.soak_time ? `<p class="text-sm text-neutral-600">Soak: ${recipe.soak_time} min</p>` : ''}
+                    ${recipe.notes ? `<p class="text-sm text-neutral-600 italic mt-2">"${recipe.notes}"</p>` : ''}
+                    <div class="flex gap-2 mt-4">
+                        <button onclick="editRecipe('${recipe.id}')" class="flex-1 px-3 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                            Edit
+                        </button>
+                        <button onclick="deleteRecipe('${recipe.id}')" class="px-3 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50 text-xs uppercase tracking-widest font-medium">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function showRecipeModal(recipeId = null) {
+            if (recipeId) {
+                editingItem = db.get('recipes').find(r => r.id === recipeId);
+            } else {
+                editingItem = null;
+            }
+            
+            const recipe = editingItem || {};
+            
+            document.getElementById('modals').innerHTML = `
+                <div id="recipeModal" class="modal active">
+                    <div class="modal-content bg-[#fdfcf9] rounded-lg p-6 max-w-lg w-full mx-4">
+                        <h2 class="text-2xl font-medium mb-6">${recipeId ? 'Edit' : 'New'} Soup Recipe</h2>
+                        <form onsubmit="saveRecipe(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Recipe Name</label>
+                                <input type="text" id="recipe-name" required value="${recipe.name || ''}" placeholder="e.g., Tomato Red" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Effect/Result</label>
+                                <input type="text" id="recipe-effect" value="${recipe.effect || ''}" placeholder="e.g., Red tint, vintage look" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Soak Time (minutes)</label>
+                                    <input type="number" id="recipe-soak" value="${recipe.soak_time || ''}" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Dry Time (hours)</label>
+                                    <input type="number" id="recipe-dry" value="${recipe.dry_time || ''}" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Ingredients</label>
+                                <textarea id="recipe-ingredients" rows="3" placeholder="List ingredients (one per line)" class="w-full px-3 py-2 border border-neutral-300 rounded">${recipe.ingredients || ''}</textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Works With</label>
+                                <input type="text" id="recipe-works" value="${recipe.works_with || ''}" placeholder="e.g., Color negative, B&W" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Image (Optional)</label>
+                                <input type="file" id="recipe-image" accept="image/*" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                ${recipe.image ? `<img src="${recipe.image}" class="mt-2 image-preview">` : ''}
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
+                                <textarea id="recipe-notes" rows="3" placeholder="Process tips and observations..." class="w-full px-3 py-2 border border-neutral-300 rounded">${recipe.notes || ''}</textarea>
+                            </div>
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button type="button" onclick="hideModal('recipeModal')" class="px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                    ${recipeId ? 'Update' : 'Create'} Recipe
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function saveRecipe(event) {
+            event.preventDefault();
+            
+            const recipe = {
+                name: document.getElementById('recipe-name').value,
+                effect: document.getElementById('recipe-effect').value,
+                soak_time: document.getElementById('recipe-soak').value,
+                dry_time: document.getElementById('recipe-dry').value,
+                ingredients: document.getElementById('recipe-ingredients').value,
+                works_with: document.getElementById('recipe-works').value,
+                notes: document.getElementById('recipe-notes').value
+            };
+            
+            const imageFile = document.getElementById('recipe-image').files[0];
+            if (imageFile) {
+                recipe.image = await imageToBase64(imageFile);
+            } else if (editingItem && editingItem.image) {
+                recipe.image = editingItem.image;
+            }
+            
+            if (editingItem) {
+                db.update('recipes', editingItem.id, recipe);
+            } else {
+                db.add('recipes', recipe);
+            }
+            
+            hideModal('recipeModal');
+            renderPage();
+        }
+
+        function editRecipe(id) {
+            showRecipeModal(id);
+        }
+
+        function deleteRecipe(id) {
+            if (confirm('Delete this recipe?')) {
+                db.delete('recipes', id);
+                renderPage();
+            }
+        }
+
+        function renderRollDetail() {
+            const roll = db.get('rolls').find(r => r.id === currentRollId);
+            if (!roll) return '<p>Roll not found</p>';
+            
+            const shots = db.get('shots').filter(s => s.roll_id === currentRollId).sort((a, b) => a.frame_number - b.frame_number);
+            
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <button onclick="navigateTo('active-rolls')" class="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-6">
+                        <span>←</span>
+                        <span class="text-xs uppercase tracking-widest font-medium">Back</span>
+                    </button>
+                    
+                    <div class="border border-neutral-300 bg-[#fdfcf9] rounded-lg p-6 mb-6">
+                        <h1 class="text-3xl font-medium text-neutral-900 mb-2">${roll.brand || ''} ${roll.film_stock}</h1>
+                        <p class="text-neutral-600">${getCameraName(roll.camera_id)}</p>
+                        
+                        <div class="grid md:grid-cols-3 gap-4 mt-6">
+                            <div>
+                                <p class="text-sm text-neutral-500 uppercase tracking-widest">ISO</p>
+                                <p class="text-2xl font-mono font-bold">${roll.iso}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-500 uppercase tracking-widest">Frames</p>
+                                <p class="text-2xl font-mono font-bold">${roll.frames_shot || 0} / ${roll.total_frames}</p>
+                            </div>
+                            <div>
+                                <p class="text-sm text-neutral-500 uppercase tracking-widest">Status</p>
+                                <p class="text-lg font-medium capitalize">${roll.status}</p>
+                            </div>
+                        </div>
+                        
+                        ${roll.status === 'loaded' && (roll.frames_shot || 0) < roll.total_frames ? `
+                            <button onclick="showLogShotModal()" class="mt-6 px-4 py-2 bg-neutral-900 text-white rounded-md hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                + Log Shot
+                            </button>
+                        ` : ''}
+                        
+                        ${roll.status === 'loaded' && (roll.frames_shot || 0) >= roll.total_frames ? `
+                            <button onclick="markComplete('${roll.id}')" class="mt-6 px-4 py-2 bg-fuchsia-600 text-white rounded-md hover:bg-fuchsia-700 text-xs uppercase tracking-widest font-medium">
+                                Mark as Completed
+                            </button>
+                        ` : ''}
+                    </div>
+                    
+                    <h2 class="text-2xl font-medium text-neutral-900 mb-4">Shot Log</h2>
+                    
+                    ${shots.length === 0 ? `
+                        <div class="text-center py-12 text-neutral-500">
+                            <p>No shots logged yet</p>
+                        </div>
+                    ` : `
+                        <div class="space-y-3">
+                            ${shots.map(shot => `
+                                <div class="border border-neutral-300 bg-[#fdfcf9] rounded-lg p-4">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div class="font-mono font-bold text-lg">Frame ${shot.frame_number}</div>
+                                        <div class="text-sm text-neutral-500">${formatDate(shot.shot_date)}</div>
+                                    </div>
+                                    ${shot.subject ? `<p class="text-neutral-900 mb-2">${shot.subject}</p>` : ''}
+                                    <div class="flex gap-4 text-sm text-neutral-600 flex-wrap">
+                                        ${shot.aperture ? `<span>f/${shot.aperture}</span>` : ''}
+                                        ${shot.shutter_speed ? `<span>${shot.shutter_speed}</span>` : ''}
+                                        ${shot.lighting ? `<span>☀️ ${shot.lighting}</span>` : ''}
+                                        ${shot.location ? `<span>📍 ${shot.location}</span>` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function showLogShotModal() {
+            const shots = db.get('shots').filter(s => s.roll_id === currentRollId);
+            const nextFrame = shots.length + 1;
+            
+            document.getElementById('modals').innerHTML = `
+                <div id="shotModal" class="modal active">
+                    <div class="modal-content bg-[#fdfcf9] rounded-lg p-6 max-w-lg w-full mx-4">
+                        <h2 class="text-2xl font-medium mb-6">Log Frame #${nextFrame}</h2>
+                        <form onsubmit="saveShot(event, ${nextFrame})" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Subject</label>
+                                <input type="text" id="shot-subject" placeholder="What did you photograph?" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Aperture</label>
+                                    <input type="text" id="shot-aperture" placeholder="f/2.8" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-neutral-700 mb-1">Shutter</label>
+                                    <input type="text" id="shot-speed" placeholder="1/125" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Lighting Conditions</label>
+                                <select id="shot-lighting" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                                    <option value="">Select lighting...</option>
+                                    ${LIGHTING_CONDITIONS.map(l => `<option value="${l}">${l}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Location</label>
+                                <input type="text" id="shot-location" placeholder="Where?" class="w-full px-3 py-2 border border-neutral-300 rounded">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-neutral-700 mb-1">Notes</label>
+                                <textarea id="shot-notes" rows="2" class="w-full px-3 py-2 border border-neutral-300 rounded"></textarea>
+                            </div>
+                            <div class="flex gap-3 justify-end pt-2">
+                                <button type="button" onclick="hideModal('shotModal')" class="px-4 py-2 border border-neutral-300 rounded hover:bg-neutral-50 text-xs uppercase tracking-widest font-medium">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="px-4 py-2 bg-neutral-900 text-white rounded hover:bg-neutral-800 text-xs uppercase tracking-widest font-medium">
+                                    Log Shot
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveShot(event, frameNumber) {
+            event.preventDefault();
+            
+            const shot = {
+                roll_id: currentRollId,
+                frame_number: frameNumber,
+                subject: document.getElementById('shot-subject').value,
+                aperture: document.getElementById('shot-aperture').value,
+                shutter_speed: document.getElementById('shot-speed').value,
+                lighting: document.getElementById('shot-lighting').value,
+                location: document.getElementById('shot-location').value,
+                notes: document.getElementById('shot-notes').value,
+                shot_date: new Date().toISOString().split('T')[0]
+            };
+            
+            db.add('shots', shot);
+            db.update('rolls', currentRollId, { frames_shot: frameNumber });
+            
+            hideModal('shotModal');
+            renderPage();
+        }
+
+        function markComplete(rollId) {
+            if (confirm('Mark this roll as completed?')) {
+                db.update('rolls', rollId, { 
+                    status: 'completed',
+                    completed_date: new Date().toISOString().split('T')[0]
+                });
+                renderPage();
+            }
+        }
+
+        // ========== PROJECTS PAGE ==========
+        function renderProjects() {
+            const projects = db.get('projects');
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between items-center mb-8">
+                        <h1 class="text-4xl font-bold text-darktext">📁 Projects</h1>
+                        <button onclick="showProjectModal()" class="px-6 py-3 bg-accent text-white rounded-lg font-bold hover:bg-accentdark">+ New Project</button>
+                    </div>
+                    ${projects.length === 0 ? `
+                        <div class="text-center py-16 border-4 border-dashed border-darktext/20 bg-cream rounded-xl">
+                            <p class="text-lg text-medtext mb-4">No projects yet</p>
+                            <button onclick="showProjectModal()" class="px-6 py-3 border-2 border-accent text-accent rounded-lg font-bold hover:bg-accentbg">Create First Project</button>
+                        </div>
+                    ` : `
+                        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            ${projects.map(p => {
+                                const rolls = db.get('rolls').filter(r => r.project_id === p.id);
+                                return `
+                                    <div class="border-4 border-darktext/20 bg-cream rounded-xl p-6 hover:border-accent transition-all">
+                                        <h3 class="text-xl font-bold mb-2">${p.name}</h3>
+                                        <p class="text-sm text-medtext mb-4">${p.description || ''}</p>
+                                        <p class="text-sm font-bold text-accent">${rolls.length} rolls</p>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function showProjectModal() {
+            document.getElementById('modals').innerHTML = `
+                <div id="projectModal" class="modal active">
+                    <div class="modal-content bg-cream rounded-xl p-6 max-w-lg w-full">
+                        <h2 class="text-2xl font-bold mb-6">New Project</h2>
+                        <form onsubmit="saveProject(event)" class="space-y-4">
+                            <div>
+                                <label class="block font-bold mb-2">Project Name</label>
+                                <input type="text" id="proj-name" required class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-2">Description</label>
+                                <textarea id="proj-desc" rows="3" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg"></textarea>
+                            </div>
+                            <div class="flex gap-3 justify-end">
+                                <button type="button" onclick="hideModal('projectModal')" class="px-6 py-3 border-2 border-medtext rounded-lg font-bold">Cancel</button>
+                                <button type="submit" class="px-6 py-3 bg-accent text-white rounded-lg font-bold">Create</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveProject(e) {
+            e.preventDefault();
+            db.add('projects', {
+                name: document.getElementById('proj-name').value,
+                description: document.getElementById('proj-desc').value
+            });
+            hideModal('projectModal');
+            renderPage();
+        }
+
+        // ========== DARKROOM PAGE ==========
+        function renderDarkroom() {
+            const devs = db.get('darkroom_dev');
+            const prints = db.get('prints');
+            
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <h1 class="text-4xl font-bold text-darktext mb-8">🔬 Darkroom</h1>
+                    
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <button onclick="showDarkroomDevModal()" class="border-4 border-accent bg-accentbg rounded-xl p-8 hover:bg-accent hover:text-white transition-all text-left">
+                            <h2 class="text-2xl font-bold mb-2">📽️ Development</h2>
+                            <p class="text-lg">${devs.length} sessions logged</p>
+                        </button>
+                        <button onclick="showPrintModal()" class="border-4 border-accent bg-accentbg rounded-xl p-8 hover:bg-accent hover:text-white transition-all text-left">
+                            <h2 class="text-2xl font-bold mb-2">🖼️ Printing</h2>
+                            <p class="text-lg">${prints.length} prints made</p>
+                        </button>
+                    </div>
+
+                    <h2 class="text-2xl font-bold mb-4">Recent Development</h2>
+                    ${devs.length === 0 ? `<p class="text-medtext">No sessions yet</p>` : `
+                        <div class="space-y-4">
+                            ${devs.slice(0, 5).map(d => `
+                                <div class="border-2 border-darktext/20 bg-cream rounded-lg p-4">
+                                    <p class="font-bold">${d.developer}${d.dilution ? ` (${d.dilution})` : ''}</p>
+                                    <p class="text-sm text-medtext">${d.temp}°C for ${d.time} min</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function showDarkroomDevModal() {
+            document.getElementById('modals').innerHTML = `
+                <div id="darkroomModal" class="modal active">
+                    <div class="modal-content bg-cream rounded-xl p-6 max-w-2xl w-full">
+                        <h2 class="text-2xl font-bold mb-6">Log Development</h2>
+                        <form onsubmit="saveDarkroomDev(event)" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold mb-2">Developer</label>
+                                    <select id="dev-developer" required class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                        ${DEVELOPERS.map(d => `<option value="${d}">${d}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-bold mb-2">Dilution</label>
+                                    <input type="text" id="dev-dilution" placeholder="1:50, Stock" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold mb-2">Temp (°C)</label>
+                                    <input type="number" id="dev-temp" value="20" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block font-bold mb-2">Time (min)</label>
+                                    <input type="number" id="dev-time" step="0.5" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-2">Notes</label>
+                                <textarea id="dev-notes" rows="3" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg"></textarea>
+                            </div>
+                            <div class="flex gap-3 justify-end">
+                                <button type="button" onclick="hideModal('darkroomModal')" class="px-6 py-3 border-2 border-medtext rounded-lg font-bold">Cancel</button>
+                                <button type="submit" class="px-6 py-3 bg-accent text-white rounded-lg font-bold">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveDarkroomDev(e) {
+            e.preventDefault();
+            db.add('darkroom_dev', {
+                developer: document.getElementById('dev-developer').value,
+                dilution: document.getElementById('dev-dilution').value,
+                temp: document.getElementById('dev-temp').value,
+                time: document.getElementById('dev-time').value,
+                notes: document.getElementById('dev-notes').value,
+                dev_date: new Date().toISOString().split('T')[0]
+            });
+            hideModal('darkroomModal');
+            renderPage();
+        }
+
+        function showPrintModal() {
+            document.getElementById('modals').innerHTML = `
+                <div id="printModal" class="modal active">
+                    <div class="modal-content bg-cream rounded-xl p-6 max-w-2xl w-full">
+                        <h2 class="text-2xl font-bold mb-6">Log Print</h2>
+                        <form onsubmit="savePrint(event)" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold mb-2">Frame Ref</label>
+                                    <input type="text" id="print-frame" placeholder="Roll-Frame" required class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block font-bold mb-2">Paper</label>
+                                    <input type="text" id="print-paper" placeholder="Ilford MG IV" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold mb-2">Exposure (sec)</label>
+                                    <input type="number" id="print-exposure" step="0.1" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block font-bold mb-2">Developer</label>
+                                    <select id="print-dev" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                        ${PRINT_DEVELOPERS.map(d => `<option value="${d}">${d}</option>`).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-2">Dodging/Burning</label>
+                                <textarea id="print-dodge" rows="2" placeholder="Burn corners +2s" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg"></textarea>
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-2">Toning</label>
+                                <select id="print-toning" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                    ${TONERS.map(t => `<option value="${t}">${t}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="flex gap-3 justify-end">
+                                <button type="button" onclick="hideModal('printModal')" class="px-6 py-3 border-2 border-medtext rounded-lg font-bold">Cancel</button>
+                                <button type="submit" class="px-6 py-3 bg-accent text-white rounded-lg font-bold">Save Print</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function savePrint(e) {
+            e.preventDefault();
+            db.add('prints', {
+                frame_ref: document.getElementById('print-frame').value,
+                paper: document.getElementById('print-paper').value,
+                exposure: document.getElementById('print-exposure').value,
+                developer: document.getElementById('print-dev').value,
+                dodge_burn: document.getElementById('print-dodge').value,
+                toning: document.getElementById('print-toning').value,
+                print_date: new Date().toISOString().split('T')[0]
+            });
+            hideModal('printModal');
+            renderPage();
+        }
+
+        // ========== LAB TRACKER ==========
+        function renderLabs() {
+            const labs = db.get('labs');
+            return `
+                <div class="max-w-6xl mx-auto">
+                    <div class="flex justify-between mb-8">
+                        <h1 class="text-4xl font-bold text-darktext">🏪 Lab Tracker</h1>
+                        <button onclick="showLabModal()" class="px-6 py-3 bg-accent text-white rounded-lg font-bold hover:bg-accentdark">+ Log Lab</button>
+                    </div>
+                    ${labs.length === 0 ? `
+                        <p class="text-center text-medtext py-16">No lab developments yet</p>
+                    ` : `
+                        <div class="space-y-4">
+                            ${labs.map(lab => {
+                                const turnaround = lab.date_received && lab.date_sent ? 
+                                    Math.ceil((new Date(lab.date_received) - new Date(lab.date_sent)) / (1000 * 60 * 60 * 24)) : null;
+                                return `
+                                    <div class="border-4 border-darktext/20 bg-cream rounded-xl p-6">
+                                        <div class="flex justify-between items-start mb-4">
+                                            <div>
+                                                <h3 class="text-xl font-bold">${lab.lab_name}</h3>
+                                                <p class="text-medtext">${lab.process_type}</p>
+                                            </div>
+                                            <div class="text-right">
+                                                <p class="text-accent font-bold">${'⭐'.repeat(lab.rating || 3)}</p>
+                                                ${lab.cost ? `<p class="text-sm">£${lab.cost}</p>` : ''}
+                                            </div>
+                                        </div>
+                                        <div class="grid md:grid-cols-3 gap-4 text-sm">
+                                            <div><span class="font-bold">Sent:</span> ${formatDate(lab.date_sent)}</div>
+                                            ${lab.date_received ? `<div><span class="font-bold">Received:</span> ${formatDate(lab.date_received)}</div>` : ''}
+                                            ${turnaround ? `<div><span class="font-bold">Turnaround:</span> ${turnaround} days</div>` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    `}
+                </div>
+            `;
+        }
+
+        function showLabModal() {
+            document.getElementById('modals').innerHTML = `
+                <div id="labModal" class="modal active">
+                    <div class="modal-content bg-cream rounded-xl p-6 max-w-2xl w-full">
+                        <h2 class="text-2xl font-bold mb-6">Log Lab Development</h2>
+                        <form onsubmit="saveLab(event)" class="space-y-4">
+                            <div>
+                                <label class="block font-bold mb-2">Lab Name</label>
+                                <input type="text" id="lab-name" required class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold mb-2">Process</label>
+                                    <select id="lab-process" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                        <option>C-41</option>
+                                        <option>E-6</option>
+                                        <option>B&W</option>
+                                        <option>ECN-2</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-bold mb-2">Cost (£)</label>
+                                    <input type="number" id="lab-cost" step="0.01" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block font-bold mb-2">Sent</label>
+                                    <input type="date" id="lab-sent" required class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block font-bold mb-2">Received</label>
+                                    <input type="date" id="lab-received" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-2">Rating</label>
+                                <select id="lab-rating" class="w-full px-4 py-3 border-2 border-darktext/20 rounded-lg">
+                                    <option value="5">⭐⭐⭐⭐⭐</option>
+                                    <option value="4">⭐⭐⭐⭐</option>
+                                    <option value="3" selected>⭐⭐⭐</option>
+                                    <option value="2">⭐⭐</option>
+                                    <option value="1">⭐</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-3 justify-end">
+                                <button type="button" onclick="hideModal('labModal')" class="px-6 py-3 border-2 border-medtext rounded-lg font-bold">Cancel</button>
+                                <button type="submit" class="px-6 py-3 bg-accent text-white rounded-lg font-bold">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            `;
+        }
+
+        function saveLab(e) {
+            e.preventDefault();
+            db.add('labs', {
+                lab_name: document.getElementById('lab-name').value,
+                process_type: document.getElementById('lab-process').value,
+                cost: document.getElementById('lab-cost').value,
+                date_sent: document.getElementById('lab-sent').value,
+                date_received: document.getElementById('lab-received').value,
+                rating: document.getElementById('lab-rating').value
+            });
+            hideModal('labModal');
+            renderPage();
+        }
+
+        // Initialize
+        renderNav();
+        renderPage();
+    </script>
+</body>
+</html>
